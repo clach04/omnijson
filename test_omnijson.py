@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
 import unittest as unittest
 
 import omnijson as json
@@ -30,4 +31,7 @@ class OmniSuite(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    print(sys.platform, sys.version)
+    print('omnijson %s' % json.__version__)
+    print('omnijson engine %s' % json.core.engine)
     unittest.main()
