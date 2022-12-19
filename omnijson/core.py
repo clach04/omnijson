@@ -15,6 +15,11 @@ _engine = None
 
 
 options = [
+    # [library, deserializer from string function name, serializer to string function name, expected exceptions]
+
+    # can't make this work ['com.xhaus.jyson_from_JysonCodec', 'loads', 'dumps', (ValueError,)],  # https://opensource.xhaus.com/projects/jyson/wiki/JysonEncoding
+    # unclear how to materialize jyson exception JSONDecodeError - table uses actual exception not a name
+    ['com.xhaus.jyson.JysonCodec', 'xhaus.jyson.JysonCodec.loads', 'xhaus.jyson.JysonCodec.dumps', (ValueError,)],  # https://opensource.xhaus.com/projects/jyson/wiki/JysonEncoding
     ['ujson', 'loads', 'dumps', (ValueError,)],
     ['yajl', 'loads', 'dumps', (TypeError, ValueError)],
     ['jsonlib2', 'read', 'write', (ValueError,)],
@@ -29,7 +34,7 @@ def _import(engine):
     try:
         if '_from_' in engine:
             engine, package = engine.split('_from_')
-            m = __import__(package, globals(), locals(), [engine], -1)
+            m = __import__(package, globals(), locals(), [engine], 0)
             return getattr(m, engine)
 
         return __import__(engine)
@@ -74,6 +79,25 @@ class JSONError(ValueError):
 # Magic!
 # ------
 
+def _my_getattr(module_obj, name):
+    if '.' not in name:
+        return getattr(module_obj, name)
+
+    """so far this is just for Jython in Java with jyson
+        >>> getattr(x, 'jyson.JysonCodec.loads')
+        Traceback (most recent call last):
+          File "<stdin>", line 1, in <module>
+        AttributeError: 'javapackage' object has no attribute 'xhaus.jyson.JysonCodec.loads'
+
+    Versus:
+
+        getattr(getattr(getattr(x, 'xhaus'), 'jyson'), 'JysonCodec')
+    """
+    result = module_obj
+    for name_part in name.split('.'):
+        result = getattr(result, name_part)
+    return result
+
 
 for e in options:
 
@@ -83,6 +107,6 @@ for e in options:
         engine, _engine = e[0], e[1:4]
 
         for i in (0, 1):
-            _engine[i] = getattr(__engine, _engine[i])
+            _engine[i] = _my_getattr(__engine, _engine[i])
 
         break
